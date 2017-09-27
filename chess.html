@@ -1,0 +1,95 @@
+<html>
+<head>
+</head>
+
+<body>
+  <canvas id="chessBoard" width="484px" height="484px" style="border: 2px solid #000000;"></canvas>
+</body>
+
+</html>
+
+<script>
+  var board = document.getElementById("chessBoard");
+  var boardContext = board.getContext("2d");
+  // Starting with implementing checkers first then will pivot to chess
+
+  // Draw the board (ya know, black and white square's y'all)
+  var yPos, xPos, color;
+  var yLength = 60;
+  var xLength = 60;
+  var grid = {};
+  for (var length = 0; length < 8; length++) {
+    yPos = (length * yLength) + 2;
+    // We'll keep track of the play area by tracking row by row
+    grid[yPos] = {
+      spots: {} // Crappy name.. but is all the x coordinates that fall within this row
+    }
+    for (var width = 0; width < 8; width++) {
+      xPos = (width * xLength) + 2;
+      grid[yPos].spots[xPos] = {
+        unit: null,
+      };
+
+      if (((length % 2) === 0) && ((width % 2) === 0)) {
+        color = '#FFFFFF';
+      } else if (((length % 2) === 1) && ((width % 2) === 1)) {
+        color = '#FFFFFF';
+      } else if (((length % 2) === 0) && ((width % 2) === 1)) {
+        color = '#000000';
+      } else {
+        color = '#000000';
+      }
+      boardContext.fillStyle = color;
+      boardContext.fillRect(xPos, yPos, xLength, yLength);
+    }
+  }
+
+  // Base unit everything is derived from
+  function Unit(name, xPos, yPos, color) {
+    this.name = name;
+    this.xPos = xPos;
+    this.yPos = yPos;
+    this.color = color;
+    this.movePattern = {
+      x: 0,
+      y: 0
+    };
+    this.attackPattern = {
+      x: 0,
+      y: 0
+    };
+  } // End Unit
+
+  function Checker(xPos, yPos, color) {
+    Unit.call(this, 'Pawn', xPos, yPos, color);
+    this.movePattern.x = 1;
+    this.movePattern.y = 1;
+    this.attackPattern.x = 1;
+    this.attackPattern.y = 1;
+
+    this.draw = function() {
+      boardContext.beginPath();
+      boardContext.fillStyle = this.color;
+      // 25 is the radius of the arc
+      boardContext.arc(this.xPos, this.yPos, 25, 2 * Math.PI);
+      boardContext.fill();
+    };
+
+    this.move = function(x, y) {
+      console.log('Previous x: ' + this.xPos);
+      console.log('Previous y: ' + this.yPos);
+      console.log('New x: ' + x);
+      console.log('New y: ' + y);
+      this.x = x;
+      this.y = y;
+      this.draw();
+    };
+
+    this.attack = function(x, y) {
+      // Code, code, code...
+    };
+  } // End Checker
+
+  var checkers = [];
+  checkers.push(new Checker(2, 2, 'red'));
+</script>
