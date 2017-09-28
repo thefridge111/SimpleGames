@@ -9,6 +9,12 @@
 </html>
 
 <script>
+  var COLORS = {
+    red: '#ff0000',
+    white: '#FFFFFF',
+    black: '#000000'
+  };
+
   var board = document.getElementById("chessBoard");
   var boardContext = board.getContext("2d");
   // Starting with implementing checkers first then will pivot to chess
@@ -31,13 +37,13 @@
       };
 
       if (((length % 2) === 0) && ((width % 2) === 0)) {
-        color = '#FFFFFF';
+        color = COLORS.white;
       } else if (((length % 2) === 1) && ((width % 2) === 1)) {
-        color = '#FFFFFF';
+        color = COLORS.white;
       } else if (((length % 2) === 0) && ((width % 2) === 1)) {
-        color = '#000000';
+        color = COLORS.black;
       } else {
-        color = '#000000';
+        color = COLORS.black;
       }
       boardContext.fillStyle = color;
       boardContext.fillRect(xPos, yPos, xLength, yLength);
@@ -71,7 +77,7 @@
       boardContext.beginPath();
       boardContext.fillStyle = this.color;
       // 25 is the radius of the arc
-      boardContext.arc(this.xPos, this.yPos, 25, 2 * Math.PI);
+      boardContext.arc(this.xPos + (xLength / 2), this.yPos + (yLength / 2), 25, 0, 2 * Math.PI);
       boardContext.fill();
     };
 
@@ -91,5 +97,28 @@
   } // End Checker
 
   var checkers = [];
-  checkers.push(new Checker(2, 2, 'red'));
+  checkers.push(new Checker(62, 2, COLORS.red));
+  grid[2].spots[2].unit = checkers[i]; // Update the grid so we know the unit is there
+
+  for (var i = 0; i < checkers.length; i++) {
+    checkers[i].draw();
+  }
+
+  // Mouse handler
+$(document).mousedown(function() {
+    mousePressed = true;
+}).mouseup(function() {
+    mousePressed = false;
+});
+
+  /** This is the 'actual' game. This loop is what makes the board update and
+    * allow for movement on screen. It refreshes at ~30Hz.
+    *
+    */
+  var gameLoop = setInterval(function() {
+    // Update the game pieces
+    for (var i = 0; i < checkers.length; i++) {
+      checkers[i].update();
+    }
+  }, 30);
 </script>

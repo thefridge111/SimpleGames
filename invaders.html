@@ -1,0 +1,127 @@
+<html>
+<head>
+</head>
+
+<body>
+  <canvas id="attackSpace"></canvas>
+</body>
+
+</html>
+
+<script>
+  var canvas = document.getElementById('attackSpace');
+  var context = canvas.getContext('2d');
+
+  context.canvas.width = window.innerWidth;
+  context.canvas.height = window.innerHeight;
+  var bottom = context.canvas.height;
+  var right = context.canvas.width;
+  var centerW = right / 2;
+  var centerH = bottom / 2;
+  var bottomLimit = bottom - 10;
+
+  var shipWidth = right / 75;
+  var shipHeight = shipWidth * 1.5;
+
+  var score = 0;
+
+  // Set the background to black
+  context.fillStyle = 'black';
+  context.fillRect(0, 0, context.canvas.width, context.canvas.height);
+
+  var buttonStatus = {
+    fire: false,
+    left: false,
+    right: false,
+    up: false,
+    down: false,
+    rotateLeft: false,
+    rotateRight: false
+  }
+  // Button handlers
+  document.onkeydown = function(key) {
+    handleKeyPress(key, true);
+  };
+
+  document.onkeyup = function(key) {
+    handleKeyPress(key, false);
+  };
+
+  function handleKeyPress(keyCode, status) {
+    switch (keyCode) {
+      case 32:
+        // Spacebar
+        buttonStatus.fire = status;
+        break;
+      case 37:
+        // Left arrow
+        buttonStatus.left = status;
+        break;
+      case 38:
+        // Up arrow
+        buttonStatus.up = status;
+        break;
+      case 39:
+        // Right arrow
+        buttonStatus.right = status;
+        break;
+      case 40:
+        // Down arrow
+        buttonStatus.down = status;
+        break;
+      case 65:
+        // 'A' key
+        buttonStatus.left = status;
+        break;
+      case 87:
+        // 'W' key
+        buttonStatus.up = status;
+        break;
+      case 68:
+        // 'D' key
+        buttonStatus.right = status;
+        break;
+      case 83:
+        // 'S' key
+        buttonStatus.down = status;
+        break;
+      case 81:
+        // 'Q' key
+        buttonStatus.rotateLeft = status;
+        break;
+      case 69:
+        // 'E' key
+        buttonStatus.rotateRight = status;
+        break;
+      default:
+        // Do nothing because we dont recognize the key
+        break;
+    }
+  }
+
+  // Drawing the starship is going to require some serious canvas drawing..
+  function Ship(startX, startY, width, height, color) {
+    var that = this;
+    this.width = width;
+    this.height = height;
+    this.x = startX;
+    // The ship has to stay at least 10 pixels off the bottom
+    this.y = (startY + height) > (bottomLimit) ? (bottomLimit - height) : startY;
+    this.color = color;
+    this.fireCount = 0; // Used to set speed of ship firing
+
+    this.draw = function() {
+      context.fillStyle = that.color;
+      context.fillRect(that.x, that.y, that.width, that.height);
+    }
+
+    this.update = function() {
+
+    }
+  }
+
+  var playerShip = new Ship(centerW, bottomLimit - shipHeight, shipWidth, shipHeight, 'green');
+  playerShip.draw();
+
+
+</script>
