@@ -12,8 +12,8 @@
   var canvas = document.getElementById('attackSpace');
   var context = canvas.getContext('2d');
 
-  context.canvas.width = window.innerWidth;
-  context.canvas.height = window.innerHeight;
+  context.canvas.width = window.innerWidth - 30;
+  context.canvas.height = window.innerHeight - 30;
   var bottom = context.canvas.height;
   var right = context.canvas.width;
   var centerW = right / 2;
@@ -24,10 +24,15 @@
   var shipHeight = shipWidth * 1.5;
 
   var score = 0;
+  var playerShip = null;
+  var enemyShips = [];
+  var bolts = []; // Tracks all the blaster bolts that have been fired
 
-  // Set the background to black
-  context.fillStyle = 'black';
-  context.fillRect(0, 0, context.canvas.width, context.canvas.height);
+  function resetBackground() {
+    // Set the background to black
+    context.fillStyle = 'black';
+    context.fillRect(0, 0, context.canvas.width, context.canvas.height);
+  }
 
   var buttonStatus = {
     fire: false,
@@ -40,11 +45,11 @@
   }
   // Button handlers
   document.onkeydown = function(key) {
-    handleKeyPress(key, true);
+    handleKeyPress(key.keyCode, true);
   };
 
   document.onkeyup = function(key) {
-    handleKeyPress(key, false);
+    handleKeyPress(key.keyCode, false);
   };
 
   function handleKeyPress(keyCode, status) {
@@ -99,6 +104,31 @@
     }
   }
 
+  function BlasterBolt(startX, startY, speed) {
+    var that = this;
+    this.width = right / 225;
+    this.height = bottom / 100;
+    this.x = startX;
+    this.y = startY + (this.height * Math.sign(speed)); // Need to offset to account for bolt length
+    this.speed = speed;
+
+    this.draw = function(color) {
+      context.fillStyle = color;
+      context.fillRect(that.x, that.y, that.width, that.height);
+    };
+
+    this.update = function() {
+      that.y += that.speed;
+      that.draw('orange');
+    };
+
+    this.destroy = function() {
+      that.x = 0;
+      that.y = 0;
+      that.draw('black');
+    };
+  }
+
   // Drawing the starship is going to require some serious canvas drawing..
   function Ship(startX, startY, width, height, color) {
     var that = this;
@@ -107,21 +137,64 @@
     this.x = startX;
     // The ship has to stay at least 10 pixels off the bottom
     this.y = (startY + height) > (bottomLimit) ? (bottomLimit - height) : startY;
-    this.color = color;
-    this.fireCount = 0; // Used to set speed of ship firing
 
-    this.draw = function() {
-      context.fillStyle = that.color;
+    this.speedX = width / 2;
+    this.speedY = height / 2;
+    this.color = color;
+    this.fireSpeed = 2; // In Hz
+    this.readyToFire = true;
+
+    this.draw = function(color) {
+      context.fillStyle = color;
       context.fillRect(that.x, that.y, that.width, that.height);
-    }
+    };
 
     this.update = function() {
+      // Move X-axis
+      if (buttonStatus.left) {
+        that.x = (that.x - that.speedX) < 0 ? 0 : (that.x - that.speedX);
+      }
+      if (buttonStatus.right) {
+        that.x = ((that.x + that.width) + that.speedX) > right ? (right - that.width) : (that.x + that.speedX);
+      }
 
-    }
+      // Move Y-axis
+      if (buttonStatus.up) {
+        that.y = (that.y - that.speedY) < 0 ? 0 : (that.y - that.speedY);
+      }
+      if (buttonStatus.down) {
+        that.y = ((that.y + that.height) + that.speedY) > bottomLimit ? (bottomLimit - that.height) : (that.y + that.speedY);
+      }
+
+      if (buttonStatus.fire) {
+        that.fire();
+      }
+
+      that.draw(that.color);
+    };
+
+    this.fire = function() {
+      var offset = (that.width / 4);
+
+      if (that.readyToFire) {
+        var shot1 = new BlasterBolt((that.x + offset) , that.y, ((bottom / 100) * -1));
+        var shot2 = new BlasterBolt((that.x + (offset * 3)), that.y, ((bottom / 100) * -1));
+        bolts.push(shot1);
+        bolts.push(shot2);
+        that.readyToFire = false;
+        window.setTimeout(function() { that.readyToFire = true; }, (1000 / that.fireSpeed));
+      }
+    };
   }
 
   var playerShip = new Ship(centerW, bottomLimit - shipHeight, shipWidth, shipHeight, 'green');
-  playerShip.draw();
 
-
+  var gameLoop = setInterval(function() {
+    resetBackground();
+    playerShip.update();
+    for (var b = 0; b < bolts.length; b++) {
+      var bolt = bolts[b];
+      bolt.update();
+    }
+  }, 30); // Sets it to redraw about ~30Hz
 </script>
