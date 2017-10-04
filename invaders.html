@@ -43,16 +43,77 @@
     gameOver = true;
   }
 
-  function levelGenerator(levelNum) {
+  function shipLevelGenerator(levelNum) {
     var attrs = {
-      speedX: (levelNum * (right / 200)),
-      speedY: (levelNum * (bottom / 300)),
-      hits: (Math.ceil((levelNum / 10))),
-      shotSpeed: (levelNum * (bottom / 200)),
+      speedX: ((levelNum + 1) * (right / 700)),
+      speedY: ((levelNum + 1) * (bottom / 10000)),
+      hits: (Math.ceil((levelNum / 10)) + 1),
+      shotSpeed: ((levelNum + 1) * (bottom / 200)),
       shotFreq: ((levelNum / 10) + 0.25)
     };
 
     return attrs;
+  }
+
+  function levelGenerator(levelNum) {
+    var startX = 10;
+    var startY = 5;
+    var ships = {
+      boss: {
+        count: 0,
+        // TODO: Need to find a way to nerf the boss ship
+        attrs: [startX, startY, right / 2, bottom / 100, 'red', levelNum]
+      },
+      minion: {
+        count: 10 + ((levelNum * 2) % 15),
+        attrs: [startX, startY, right / 300, bottom / 300, 'yellow', levelNum % 10]
+      },
+      knight: {
+        count: 0,
+        attrs: [startX, startY, right / 250, bottom / 200, 'aqua', levelNum % 20]
+      },
+      templar: {
+        count: 0,
+        attrs: [startX, startY, right / 200, bottom / 150, 'blue', levelNum % 30]
+      },
+      paladin: {
+        count: 0,
+        attrs: [startX, startY, right / 100, bottom / 200, 'purple', levelNum % 40]
+      }
+    }
+
+    var bossLevels {
+      10: true,
+      25: true,
+      40: true,
+      60: true
+    };
+
+    if (bossLevels[levelNum]) {
+      ships.minion.count = 0;
+      ships.boss.count = 1;
+      return ships;
+    }
+
+    if (levelNum > 5) {
+      ships.knight.count += 10;
+    }
+    if (levelNum > 10) {
+      ships.minion.count += ((levelNum * 2) % 11);
+      ships.knight.count += ((levelNum * 3) % 13);
+      ships.templar.count += ((10 * levelNum) % 13);
+    }
+    if (levelNum > 25) {
+      ships.minion.count += ((levelNum * 4) % 15);
+      ships.knight.count += ((levelNum * 2) % 9);
+      ships.templar.count += ((10 * levelNum) % 7);
+      ships.template.count += ((3 * levelNum) % 15);
+    }
+    if (levelNum > 40) {
+      ship.paladin.count += ((levelNum * 9) % 10);
+    }
+
+    return ships;
   }
 
   var buttonStatus = {
@@ -150,19 +211,26 @@
     };
   }
 
-  function PlayerShip(startX, startY, width, height, color) {
+  function Ship(startX, startY, width, height, color) {
     var that = this;
+    this.x = startX;
+    this.y = startY;
     this.width = width;
     this.height = height;
-    this.x = startX;
+    this.color = color;
+    this.readyToFire = true;
+    this.fireSpeed = 0;
+  }
+
+  function PlayerShip(startX, startY, width, height, color) {
+    var that = this;
+    Ship.call(this, startX, startY, width, height, color);
     // The ship has to stay at least 10 pixels off the bottom
     this.y = (startY + height) > (bottomLimit) ? (bottomLimit - height) : startY;
 
     this.speedX = width / 2;
     this.speedY = height / 2;
-    this.color = color;
     this.fireSpeed = 2; // In Hz
-    this.readyToFire = true;
 
     this.draw = function(color) {
       context.fillStyle = color;
@@ -209,14 +277,9 @@
 
   function EnemyShip(startX, startY, width, height, color, level) {
     var that = this;
-    this.x = startX;
-    this.y = startY;
-    this.width = width;
-    this.height = height;
-    this.color = color;
-    this.readyToFire = true;
+    Ship.call(this, startX, startY, width, height, color);
 
-    this.attributes = levelGenerator(level);
+    this.attributes = shipLevelGenerator(level);
 
     this.draw = function(color) {
       context.fillStyle = color;
@@ -254,7 +317,7 @@
     this.fire = function() {
       if (that.readyToFire) {
         var offset = that.width / 2;
-        var shot = new BlasterBolt((that.x + offset), (that.y + that.height), that.attributes.shotSpeed);
+        var shot = new BlasterBolt((that.x + offset - (right / 450)), (that.y + that.height), that.attributes.shotSpeed);
         bolts.push(shot);
         that.readyToFire = false;
         window.setTimeout(function() { that.readyToFire = true; }, (1000 / that.attributes.shotFreq));
@@ -264,7 +327,7 @@
 
   var playerShip = new PlayerShip(centerW, bottomLimit - shipHeight, shipWidth, shipHeight, 'green');
   for (var i = 0; i < 10; i++) {
-    enemyShips.push(new EnemyShip(30, 30, 40, 60, 'yellow', 0));
+    enemyShips.push(new EnemyShip(30, 30, 20, 30, 'yellow', 0));
   }
 
   var gameLoop = setInterval(function() {
