@@ -27,6 +27,7 @@
   var currLevel = 0;
   var gameOver = false;
   var playerShip = null;
+  var shipsToGenerate = levelGenerator(currLevel);
   var enemyShips = [];
   var bolts = []; // Tracks all the blaster bolts that have been fired
 
@@ -38,8 +39,8 @@
 
   function endGame() {
     context.fillStyle = "white";
-    context.font = "bold 16px Arial";
-    context.fillText("Zibri", (right / 2) - 17, (bottom / 2) + 8);
+    context.font = "bold 32px Arial";
+    context.fillText("GAME OVER", (right / 2) - 17, (bottom / 2) + 8);
     gameOver = true;
   }
 
@@ -82,7 +83,7 @@
       }
     }
 
-    var bossLevels {
+    var bossLevels = {
       10: true,
       25: true,
       40: true,
@@ -326,10 +327,37 @@
   };
 
   var playerShip = new PlayerShip(centerW, bottomLimit - shipHeight, shipWidth, shipHeight, 'green');
-  for (var i = 0; i < 10; i++) {
-    enemyShips.push(new EnemyShip(30, 30, 20, 30, 'yellow', 0));
-  }
 
+  // The enemy ships will have to be spawned using a separate setInterval function
+  // to ensure that they arent just spawned almost simultaneously
+  var enemyLoop = function() {
+    var intervalTime = 5000 / ((currLevel / 10) + 1);
+    var shipToAdd, attr;
+    if (shipsToGenerate.boss.count > 0) {
+      attr = shipsToGenerate.boss.attrs;
+      shipsToGenerate.boss.count--;
+    } else if (shipsToGenerate.minion.count > 0) {
+      attr = shipsToGenerate.minion.attrs;
+      shipsToGenerate.minion.count--;
+    } else if (shipsToGenerate.knight.count > 0) {
+      attr = shipsToGenerate.knight.attrs;
+      shipsToGenerate.knight.count--;
+    } else if (shipsToGenerate.templar.count > 0) {
+      attr = shipsToGenerate.templar.attrs;
+      shipsToGenerate.templar.count--;
+    } else if (shipsToGenerate.paladin.count > 0) {
+      attr = shipsToGenerate.paladin.attrs;
+      shipsToGenerate.paladin.count--;
+    }
+    shipToAdd = new EnemyShip(attr[0], attr[1], attr[2], attr[3], attr[4], attr[5]);
+    enemyShips.push(shipToAdd);
+
+    window.setTimeout(enemyLoop, intervalTime);
+  };
+
+  enemyLoop();
+
+  var nextLevel = false;
   var gameLoop = setInterval(function() {
     resetBackground();
     playerShip.update();
@@ -341,6 +369,14 @@
     for (var e = 0; e < enemyShips.length; e++) {
       var enemy = enemyShips[e];
       enemy.update();
+    }
+
+    if(enemyShips.length === 0 && nextLevel) {
+      currLevel++;
+      window.setTimeout(function() {
+        nextLevel = true;
+        levelGenerator(currLevel);
+      }, 5000);
     }
   }, 30); // Sets it to redraw about ~30Hz
 </script>
