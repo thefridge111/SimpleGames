@@ -1,0 +1,479 @@
+<html>
+<head>
+</head>
+
+<body>
+  <canvas id="attackSpace"></canvas>
+</body>
+
+</html>
+
+<script>
+  var canvas = document.getElementById('attackSpace');
+  var context = canvas.getContext('2d');
+
+  context.canvas.width = window.innerWidth - 30;
+  context.canvas.height = window.innerHeight - 30;
+  var bottom = context.canvas.height;
+  var right = context.canvas.width;
+  var centerW = right / 2;
+  var centerH = bottom / 2;
+  var bottomLimit = bottom - 10;
+
+  var shipWidth = right / 75;
+  var shipHeight = shipWidth * 1.5;
+
+  var score = 0;
+  var currLevel = 0;
+  var gameOver = false;
+  var playerShip = null;
+  var shipsToGenerate = levelGenerator(currLevel);
+  var enemyShips = [];
+  var bolts = []; // Tracks all the blaster bolts that have been fired
+
+  function resetBackground() {
+    // Set the background to black
+    context.fillStyle = 'black';
+    context.fillRect(0, 0, context.canvas.width, context.canvas.height);
+  }
+
+  function drawScore() {
+    context.fillStyle = 'white';
+    context.font = 'bold 1em Arial';
+    context.fillText("Score: " + score, (right - 100), 20);
+  }
+
+  function endGame() {
+    drawBannerText('GAME OVER');
+    window.clearInterval(gameLoop);
+    window.clearInterval(enemyLoop);
+  }
+
+  function drawBannerText(text) {
+    context.fillStyle = 'white';
+    context.font = 'bold 2em Arial';
+    context.fillText(text, (right / 2) - 17, (bottom / 2) + 8);
+  }
+
+  function shipLevelGenerator(levelNum) {
+    var attrs = {
+      speedX: ((levelNum + 1) * (right / 700)),
+      speedY: ((levelNum + 1) * (bottom / 10000)),
+      hits: (Math.ceil((levelNum / 10)) + 1),
+      shotSpeed: ((levelNum + 1) * (bottom / 200)),
+      shotFreq: ((levelNum / 10) + 0.25)
+    };
+
+    return attrs;
+  }
+
+  function levelGenerator(levelNum) {
+    var startX = 10;
+    var startY = 5;
+    var ships = {
+      boss: {
+        count: 0,
+        // TODO: Need to find a way to nerf the boss ship
+        attrs: [startX, startY, right / 2, bottom / 25, 'red', levelNum]
+      },
+      minion: {
+        count: 10 + ((levelNum * 2) % 15),
+        attrs: [startX, startY, right / 50, bottom / 50, 'yellow', levelNum % 10]
+      },
+      knight: {
+        count: 0,
+        attrs: [startX, startY, right / 60, bottom / 65, 'aqua', levelNum % 20]
+      },
+      templar: {
+        count: 0,
+        attrs: [startX, startY, right / 75, bottom / 50, 'blue', levelNum % 30]
+      },
+      paladin: {
+        count: 0,
+        attrs: [startX, startY, right / 40, bottom / 45, 'purple', levelNum % 40]
+      }
+    }
+
+    var bossLevels = {
+      10: true,
+      25: true,
+      40: true,
+      60: true
+    };
+
+    if (bossLevels[levelNum]) {
+      ships.minion.count = 0;
+      ships.boss.count = 1;
+      return ships;
+    }
+
+    if (levelNum > 5) {
+      ships.knight.count += 10;
+    }
+    if (levelNum > 10) {
+      ships.minion.count += ((levelNum * 2) % 11);
+      ships.knight.count += ((levelNum * 3) % 13);
+      ships.templar.count += ((10 * levelNum) % 13);
+    }
+    if (levelNum > 25) {
+      ships.minion.count += ((levelNum * 4) % 15);
+      ships.knight.count += ((levelNum * 2) % 9);
+      ships.templar.count += ((10 * levelNum) % 7);
+      ships.template.count += ((3 * levelNum) % 15);
+    }
+    if (levelNum > 40) {
+      ship.paladin.count += ((levelNum * 9) % 10);
+    }
+
+    drawBannerText('Level ' + levelNum);
+
+    return ships;
+  }
+
+  var buttonStatus = {
+    fire: false,
+    left: false,
+    right: false,
+    up: false,
+    down: false,
+    rotateLeft: false,
+    rotateRight: false
+  }
+  // Button handlers
+  document.onkeydown = function(key) {
+    handleKeyPress(key.keyCode, true);
+  };
+
+  document.onkeyup = function(key) {
+    handleKeyPress(key.keyCode, false);
+  };
+
+  function handleKeyPress(keyCode, status) {
+    switch (keyCode) {
+      case 32:
+        // Spacebar
+        buttonStatus.fire = status;
+        break;
+      case 37:
+        // Left arrow
+        buttonStatus.left = status;
+        break;
+      case 38:
+        // Up arrow
+        buttonStatus.up = status;
+        break;
+      case 39:
+        // Right arrow
+        buttonStatus.right = status;
+        break;
+      case 40:
+        // Down arrow
+        buttonStatus.down = status;
+        break;
+      case 65:
+        // 'A' key
+        buttonStatus.left = status;
+        break;
+      case 87:
+        // 'W' key
+        buttonStatus.up = status;
+        break;
+      case 68:
+        // 'D' key
+        buttonStatus.right = status;
+        break;
+      case 83:
+        // 'S' key
+        buttonStatus.down = status;
+        break;
+      case 81:
+        // 'Q' key
+        buttonStatus.rotateLeft = status;
+        break;
+      case 69:
+        // 'E' key
+        buttonStatus.rotateRight = status;
+        break;
+      default:
+        // Do nothing because we dont recognize the key
+        break;
+    }
+  }
+
+  function BlasterBolt(startX, startY, speed) {
+    var that = this;
+    this.width = right / 225;
+    this.height = bottom / 100;
+    this.x = startX;
+    this.y = startY + (this.height * Math.sign(speed)); // Need to offset to account for bolt length
+    this.speed = speed;
+
+    this.draw = function(color) {
+      context.fillStyle = color;
+      context.fillRect(that.x, that.y, that.width, that.height);
+    };
+
+    this.update = function() {
+      that.y += that.speed;
+      that.draw('orange');
+    };
+
+    this.destroy = function() {
+      that.x = 0;
+      that.y = 0;
+      that.draw('black');
+    };
+  }
+
+  // Primitive that all ships are derived from
+  function Ship(startX, startY, width, height, color) {
+    var that = this;
+    this.x = startX;
+    this.y = startY;
+    this.width = width;
+    this.height = height;
+    this.color = color;
+    this.readyToFire = true;
+    this.fireSpeed = 0;
+
+    this.destory = function() {
+      that.color = 'black';
+      that.attributes.speedX = 0;
+      that.attributes.speedY = 0;
+      window.setTimeout(that.blowup('orange'), 10);
+      window.setTimeout(that.blowup('yellow'), 11);
+      window.setTimeout(that.blowup('orange'), 12);
+      window.setTimeout(that.blowup('yellow'), 13);
+    };
+
+    this.blowup = function(color) {
+      context.fillStyle = color;
+      context.fillRect(that.x, that.y, that.width, that.height);
+    };
+  }
+
+  function PlayerShip(startX, startY, width, height, color) {
+    var that = this;
+    Ship.call(this, startX, startY, width, height, color);
+    // The ship has to stay at least 10 pixels off the bottom
+    this.y = (startY + height) > (bottomLimit) ? (bottomLimit - height) : startY;
+
+    this.speedX = width / 2;
+    this.speedY = height / 2;
+    this.fireSpeed = 2; // In Hz
+
+    this.draw = function(color) {
+      context.fillStyle = color;
+      context.fillRect(that.x, that.y, that.width, that.height);
+    };
+
+    this.update = function() {
+      // Move X-axis
+      if (buttonStatus.left) {
+        that.x = (that.x - that.speedX) < 0 ? 0 : (that.x - that.speedX);
+      }
+      if (buttonStatus.right) {
+        that.x = ((that.x + that.width) + that.speedX) > right ? (right - that.width) : (that.x + that.speedX);
+      }
+
+      // Move Y-axis
+      if (buttonStatus.up) {
+        that.y = (that.y - that.speedY) < 0 ? 0 : (that.y - that.speedY);
+      }
+      if (buttonStatus.down) {
+        that.y = ((that.y + that.height) + that.speedY) > bottomLimit ? (bottomLimit - that.height) : (that.y + that.speedY);
+      }
+
+      if (buttonStatus.fire) {
+        that.fire();
+      }
+
+      that.draw(that.color);
+    };
+
+    this.fire = function() {
+      var offset = (that.width / 4);
+
+      if (that.readyToFire) {
+        var shot1 = new BlasterBolt((that.x + offset) , that.y, ((bottom / 100) * -1));
+        var shot2 = new BlasterBolt((that.x + (offset * 3)), that.y, ((bottom / 100) * -1));
+        bolts.push(shot1);
+        bolts.push(shot2);
+        that.readyToFire = false;
+        window.setTimeout(function() { that.readyToFire = true; }, (1000 / that.fireSpeed));
+      }
+    };
+  }
+
+  function EnemyShip(startX, startY, width, height, color, level) {
+    var that = this;
+    Ship.call(this, startX, startY, width, height, color);
+
+    this.attributes = shipLevelGenerator(level);
+
+    this.draw = function(color) {
+      context.fillStyle = color;
+      context.beginPath();
+      context.moveTo(that.x + (that.width / 2), that.y + that.height);
+      context.lineTo(that.x, that.y);
+      context.lineTo(that.x + that.width, that.y);
+      context.fill();
+    };
+
+    this.update = function() {
+      var newXPos = that.attributes.speedX + that.x;
+      if ((newXPos + that.width) >= right) {
+        newXPos = (right - (newXPos - right));
+        // Reverse direction
+        that.attributes.speedX = that.attributes.speedX * -1;
+      } else if (newXPos < 0) {
+        newXpos = 1;
+        that.attributes.speedX = that.attributes.speedX * -1;
+      }
+
+      var newYPos = that.attributes.speedY + that.y;
+      if (newYPos > bottomLimit) {
+        endGame();
+      }
+
+      that.x = newXPos;
+      that.y = newYPos;
+      that.draw(that.color);
+
+      that.fire();
+    };
+
+    this.fire = function() {
+      if (that.readyToFire) {
+        var offset = that.width / 2;
+        var shot = new BlasterBolt((that.x + offset - (right / 450)), (that.y + that.height), that.attributes.shotSpeed);
+        bolts.push(shot);
+        that.readyToFire = false;
+        window.setTimeout(function() { that.readyToFire = true; }, (1000 / that.attributes.shotFreq));
+      }
+    };
+  };
+
+  function collisionDetection() {
+    for (var b = 0; b < bolts.length; b++) {
+      // Did player get shot?
+      if (collider(bolts[b], playerShip)) {
+        bolts[b].destroy();
+        playerShip.destroy();
+        window.setTimeout(endGame, 20);
+      }
+
+      for (var e = 0; e < enemyShips.length; e++) {
+        // Check if the player ran into an enemy
+        if (collider(enemyShips[e], playerShip)) {
+          enemyShips[e].destroy();
+          playerShip.destroy();
+          window.setTimeout(endGame, 20);
+        }
+        // Did enemy get shot?
+        if (collider(enemyShips[e], bolts[b])) {
+          enemyShips[e].destroy();
+          bolts[b].destroy();
+          bolts.splice(b, 1);
+          b--;
+          enemyShips.splice(e, 1);
+          e--;
+        }
+      }
+    }
+
+    // This gets checked independently in case there are no blaster bolts (edge case)
+    if (bolts.length > 0) {
+      for (var e2 = 0; e2 < enemyShips.length; e2++) {
+        // Check if the player ran into an enemy
+        if (collider(enemyShips[e2], playerShip)) {
+          enemyShips[e2].destroy();
+          playerShip.destroy();
+          window.setTimeout(endGame, 20);
+        }
+      }
+    }
+  }
+
+  // Return true if collision
+  function collider(obj1, obj2) {
+    var obj1L = obj1.x;
+    var obj1R = obj1.x + obj1.width;
+    var obj1T = obj1.y;
+    var obj1B = obj1.y + obj1.height;
+    var obj2L = obj2.x;
+    var obj2R = obj2.x + obj2.width;
+    var obj2T = obj2.y;
+    var obj2B = obj2.y + obj2.height;
+    if ((obj1L <= obj2R && obj1L >= obj2L) ||
+        (obj1R >= obj2L && obj1R <= obj2R)) {
+      if ((obj1T <= obj2B && obj1T >= obj2T) ||
+          (obj1B >= obj2T && obj1B <= obj2B)) {
+            return true;
+      }
+    }
+    return false;
+  }
+
+  var playerShip = new PlayerShip(centerW, bottomLimit - shipHeight, shipWidth, shipHeight, 'green');
+
+  // The enemy ships will have to be spawned using a separate setInterval function
+  // to ensure that they arent just spawned almost simultaneously
+  var enemyLoop = function() {
+    var intervalTime = 5000 / ((currLevel / 10) + 1);
+    var shipToAdd, attr;
+    if (shipsToGenerate.boss.count > 0) {
+      attr = shipsToGenerate.boss.attrs;
+      shipsToGenerate.boss.count--;
+    } else if (shipsToGenerate.minion.count > 0) {
+      attr = shipsToGenerate.minion.attrs;
+      shipsToGenerate.minion.count--;
+    } else if (shipsToGenerate.knight.count > 0) {
+      attr = shipsToGenerate.knight.attrs;
+      shipsToGenerate.knight.count--;
+    } else if (shipsToGenerate.templar.count > 0) {
+      attr = shipsToGenerate.templar.attrs;
+      shipsToGenerate.templar.count--;
+    } else if (shipsToGenerate.paladin.count > 0) {
+      attr = shipsToGenerate.paladin.attrs;
+      shipsToGenerate.paladin.count--;
+    }
+    shipToAdd = new EnemyShip(attr[0], attr[1], attr[2], attr[3], attr[4], attr[5]);
+    enemyShips.push(shipToAdd);
+
+    window.setTimeout(enemyLoop, intervalTime);
+  };
+
+  enemyLoop();
+
+  var nextLevel = false;
+  var gameLoop = setInterval(function() {
+    resetBackground();
+    drawScore();
+
+    playerShip.update();
+    for (var b = 0; b < bolts.length; b++) {
+      var bolt = bolts[b];
+      bolt.update();
+      if (bolt.x === 0 && bolt.y === 0) {
+        bolts.splice(b, 1);
+        b--;
+      }
+    }
+
+    for (var e = 0; e < enemyShips.length; e++) {
+      var enemy = enemyShips[e];
+      enemy.update();
+    }
+
+    collisionDetection();
+
+    if(enemyShips.length === 0 && nextLevel) {
+      currLevel++;
+      window.setTimeout(function() {
+        nextLevel = true;
+        levelGenerator(currLevel);
+      }, 5000);
+    }
+  }, 30); // Sets it to redraw about ~30Hz
+</script>
